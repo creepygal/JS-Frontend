@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Player with Captions</title>
+    <style>
+        #container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        #player-container {
+            width: 400px;
+            height: 300px;
+        }
+
+        #progress-bar {
+            width: 100%;
+            background-color: #ddd;
+        }
+
+        #progress {
+            width: 0%;
+            height: 20px;
+            background-color: #4CAF50;
+        }
+
+        #status {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        #video-controls {
+            clear: both;
+            margin: 10px;
+            text-align: center;
+        }
+
+        #captions {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        #youtube-audio {
+            width: 50px;
+            margin: 2em auto;
+            cursor: pointer;
+            cursor: hand;
+            display: none;
+        }
+
+        .slider-container {
+            margin-top: 10px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .slider-label {
+            display: inline-block;
+            width: 20%;
+            text-align: right;
+            padding-right: 10px;
+        }
+
+        .slider-input {
+            width: 60%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="player-container">
+            <div data-video="bG9z-atG7gc" data-autoplay="0" data-loop="1" id="youtube-audio">
+                <img id="youtube-icon" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlvTiXvyZEYR0fR1w8vugQNUVaaqHwUWC6DnPfQ79n2g&s" style="width: 50px; height: auto;">
+                <div id="youtube-player"></div>
+            </div>
+            <div id="progress-bar">
+                <div id="progress"></div>
+            </div>
+            <div id="status"></div>
+            <div id="video-controls">
+                <input type="text" id="video-url" placeholder="Enter YouTube Video URL">
+                <button onclick="setVideo()">Set Video</button><br/>
+                <br/>
+                <div class="slider-container">
+                    <label for="freq-input" class="slider-label">Frequency:</label>
+                    <input type="range" id="freq-input" min="0.5" max="2" step="0.1" value="1" class="slider-input">
+                </div>
+                <div class="slider-container">
+<!--                     <label for="pitch-input" class="slider-label">Pitch:</label>
+                    <input type="range" id="pitch-input" min="0.5" max="2" step="0.1" value="1" class="slider-input">
+                </div>
+                <div class="slider-container">
+                    <label for="tempo-input" class="slider-label">Tempo:</label>
+                    <input type="range" id="tempo-input" min="0.5" max="2" step="0.1" value="1" class="slider-input"> -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="captions" style="text-align: center; margin-top: 10px;"></div>
+
+    <script type="text/javascript" src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        var player;
+        var audioPlaying = false; // to track if audio is playing or not
+        
+        function onYouTubeIframeAPIReady() {
+            var ctrlq = document.getElementById("youtube-audio");
+            ctrlq.innerHTML = '<img id="youtube-icon" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlvTiXvyZEYR0fR1w8vugQNUVaaqHwUWC6DnPfQ79n2g&s" style="width: 50px; height: auto;"/><div id="youtube-player"></div>';
+            ctrlq.style.cssText = 'width:50px;margin:2em auto;cursor:pointer;cursor:hand;display:none';
+            ctrlq.onclick = toggleAudio;
+
+            player = new YT.Player('youtube-player', {
+                height: '0',
+                width: '0',
+                videoId: ctrlq.dataset.video,
+                playerVars: {
+                    autoplay: ctrlq.dataset.autoplay,
+                    loop: ctrlq.dataset.loop,
+                     cc_load_policy: 1 // Enable captions
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange 
+                } 
+            });
+        } 
+
+        function togglePlayButton(play) {
+            // Changing the image source based on the play state
+            document.getElementById("youtube-icon").src = play ? "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQhx6-CCszzxxlCQrrXyeseyyt_DT06hbz8dAjMT_J-7g&s" : "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTP-xE2TtyusNPgMyzMwdQN-J63-1LBQ-dncko1J7EYjw&s";
+            
+            // Printing status based on play state
+            document.getElementById("status").innerText = play ? "Playing Audio" : "Stopped";
+        }
+
+        function toggleAudio() {
+            if ( player.getPlayerState() == 1 || player.getPlayerState() == 3 ) {
+                player.pauseVideo(); 
+                togglePlayButton(false);
+            } else {
+                player.playVideo(); 
+                togglePlayButton(true);
+            } 
+        } 
+
+        function onPlayerReady(event) {
+            player.setPlaybackQuality("small");
+            player.loadModule('captions');
+      
+      // Set captions track
+      player.setOption('captions','track', {
+        languageCode: 'en',
+        name: 'English',
+        kind: 'asr'
+      });
+
+      player.setOption('captions','tracklist',[0]);
+
+      // Append captions container
+      var captionsContainer = document.createElement('div');
+      captionsContainer.id = "captions-container";
+      player.getIframe().appendChild(captionsContainer);
+
+    
+            document.getElementById("youtube-audio").style.display = "block";
+            togglePlayButton(player.getPlayerState() !== 5);
+
+            setInterval(updateProgressBar, 100); // Update progress bar every 100 milliseconds
+            // Add event listener for progress bar click
+            document.getElementById("progress-bar").addEventListener("click", function(event) {
+                var progressBar = document.getElementById("progress-bar");
+                var boundingRect = progressBar.getBoundingClientRect();
+                var offsetX = event.clientX - boundingRect.left;
+                var progressBarWidth = boundingRect.width;
+                var seekPercentage = offsetX / progressBarWidth;
+                var seekTime = player.getDuration() * seekPercentage;
+                player.seekTo(seekTime);
+            });
+
+            // Add event listeners for sliders
+            document.getElementById("freq-input").addEventListener("input", function(event) {
+                var frequency = parseFloat(event.target.value);
+                changeFrequency(frequency);
+            });
+            document.getElementById("pitch-input").addEventListener("input", function(event) {
+                var pitch = parseFloat(event.target.value);
+                changePitch(pitch);
+            });
+            document.getElementById("tempo-input").addEventListener("input", function(event) {
+                var tempo = parseFloat(event.target.value);
+                changeTempo(tempo);
+            });
+            
+            
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === 0) {
+                togglePlayButton(false); 
+            }
+        }
+
+        function setVideo() {
+            var videoUrl = document.getElementById("video-url").value;
+            var videoId = extractVideoId(videoUrl);
+            if (videoId) {
+                player.loadVideoById(videoId);
+                document.getElementById("youtube-audio").setAttribute("data-video", videoId);
+                togglePlayButton(true);
+            } else {
+                alert("Invalid YouTube video URL!");
+            }
+        }
+
+        function extractVideoId(url) {
+            var videoId = "";
+            if (url.includes("youtube.com") && url.includes("v=")) {
+                videoId = url.split("v=")[1].split("&")[0];
+            } else if (url.includes("youtu.be/")) {
+                videoId = url.split("youtu.be/")[1].split("?")[0];
+            }
+            return videoId;
+        }
+
+        function updateProgressBar() {
+            var currentTime = player.getCurrentTime();
+            var duration = player.getDuration();
+            var progress = (currentTime / duration) * 100;
+            document.getElementById("progress").style.width = progress + "%";
+            
+            // Update captions dynamically
+            var captionsElement = document.getElementById("captions");
+            if (captionsElement) {
+                // Example: Displaying current time as captions
+                captionsElement.innerText = "Current Time: " + formatTime(currentTime);
+            }
+        }
+
+        function formatTime(time) {
+            var minutes = Math.floor(time / 60);
+            var seconds = Math.floor(time % 60);
+            seconds = seconds < 10 ? '0' + seconds : seconds;
+            return minutes + ":" + seconds;
+        }
+
+        function changeFrequency(frequency) {
+            // Adjust the audio frequency here
+            player.setPlaybackRate(frequency);
+        }
+
+        function changePitch(pitch) {
+            // Adjust the pitch here
+            // Code to adjust pitch goes here
+        }
+
+        function changeTempo(tempo) {
+            // Adjust the tempo here
+            // Code to adjust tempo goes here
+        }
+    </script>
+</body>
+</html>
